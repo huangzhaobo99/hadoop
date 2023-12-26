@@ -588,7 +588,11 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
   /**
    * Check interval of an active namenode's edit log roller thread 
    */
-  private final int editLogRollerInterval;
+  private final int editLogRollerCheckInterval;
+  /**
+   * How often active namenode will roll its own log as to time.
+   */
+  private final long editLogRollerTriggerInterval;
 
   /**
    * How frequently we scan and unlink corrupt lazyPersist files.
@@ -996,9 +1000,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           conf.getLong(
               DFS_NAMENODE_CHECKPOINT_TXNS_KEY,
               DFS_NAMENODE_CHECKPOINT_TXNS_DEFAULT));
-      this.editLogRollerInterval = conf.getInt(
-          DFS_NAMENODE_EDIT_LOG_AUTOROLL_CHECK_INTERVAL_MS,
-          DFS_NAMENODE_EDIT_LOG_AUTOROLL_CHECK_INTERVAL_MS_DEFAULT);
+      this.editLogRollerCheckInterval =
+          conf.getInt(DFS_NAMENODE_EDIT_LOG_AUTOROLL_CHECK_INTERVAL_MS,
+              DFS_NAMENODE_EDIT_LOG_AUTOROLL_CHECK_INTERVAL_MS_DEFAULT);
+      this.editLogRollerTriggerInterval =
+          conf.getLong(DFSConfigKeys.DFS_NAMENODE_EDIT_LOG_AUTOROLL_INTERVAL_MS_KEY,
+              DFSConfigKeys.DFS_NAMENODE_EDIT_LOG_AUTOROLL_INTERVAL_MS_DEFAULT);
 
       this.lazyPersistFileScrubIntervalSec = conf.getInt(
           DFS_NAMENODE_LAZY_PERSIST_FILE_SCRUB_INTERVAL_SEC,
@@ -1455,7 +1462,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
       nnrmthread.start();
 
       nnEditLogRoller = new Daemon(new NameNodeEditLogRoller(
-          editLogRollerThreshold, editLogRollerInterval));
+          editLogRollerThreshold, editLogRollerCheckInterval));
       nnEditLogRoller.start();
 
       if (lazyPersistFileScrubIntervalSec > 0) {
@@ -4564,6 +4571,7 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
     private boolean shouldRun = true;
     private final long rollThreshold;
     private final long sleepIntervalMs;
+    private long lastRollTimeMs = monotonicNow();
 
     public NameNodeEditLogRoller(long rollThreshold, int sleepIntervalMs) {
         this.rollThreshold = rollThreshold;
@@ -4577,9 +4585,12 @@ public class FSNamesystem implements Namesystem, FSNamesystemMBean,
           long numEdits = getCorrectTransactionsSinceLastLogRoll();
           if (numEdits > rollThreshold) {
             FSNamesystem.LOG.info("NameNode rolling its own edit log because"
-                + " number of edits in open segment exceeds threshold of "
-                + rollThreshold);
+                + " number of edits in open segment exceeds threshold of " + rollThreshold);
             rollEditLog();
+          } else if (numEdits > 0 && (monotonicNow() - lastRollTimeMs > logRollPeriod)) {
+            FSNamesystem.LOG.info("NameNode rolling its own edit log");
+            rollEditLog();
+            lastRollTimeMs = monotonicNow();
           }
         } catch (Exception e) {
           FSNamesystem.LOG.error("Swallowing exception in "

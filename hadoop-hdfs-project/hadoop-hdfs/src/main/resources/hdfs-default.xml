@@ -3114,7 +3114,7 @@
 
 <property>
   <name>dfs.namenode.edit.log.autoroll.check.interval.ms</name>
-  <value>300000</value>
+  <value>5000</value>
   <description>
     How often an active namenode will check if it needs to roll its edit log,
     in milliseconds.

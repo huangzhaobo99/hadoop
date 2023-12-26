@@ -412,7 +412,10 @@ public class DFSConfigKeys extends CommonConfigurationKeys {
   public static final float
       DFS_NAMENODE_EDIT_LOG_AUTOROLL_MULTIPLIER_THRESHOLD_DEFAULT = 0.5f;
   public static final String  DFS_NAMENODE_EDIT_LOG_AUTOROLL_CHECK_INTERVAL_MS = "dfs.namenode.edit.log.autoroll.check.interval.ms";
-  public static final int     DFS_NAMENODE_EDIT_LOG_AUTOROLL_CHECK_INTERVAL_MS_DEFAULT = 5*60*1000;
+  public static final int DFS_NAMENODE_EDIT_LOG_AUTOROLL_CHECK_INTERVAL_MS_DEFAULT = 5 * 1000;
+  public static final String DFS_NAMENODE_EDIT_LOG_AUTOROLL_INTERVAL_MS_KEY =
+      "dfs.namenode.edit.log.autoroll.interval.ms";
+  public static final int DFS_NAMENODE_EDIT_LOG_AUTOROLL_INTERVAL_MS_DEFAULT = 2 * 60 * 1000;
 
   public static final String  DFS_NAMENODE_LAZY_PERSIST_FILE_SCRUB_INTERVAL_SEC = "dfs.namenode.lazypersist.file.scrub.interval.sec";
   public static final int     DFS_NAMENODE_LAZY_PERSIST_FILE_SCRUB_INTERVAL_SEC_DEFAULT = 5 * 60;
