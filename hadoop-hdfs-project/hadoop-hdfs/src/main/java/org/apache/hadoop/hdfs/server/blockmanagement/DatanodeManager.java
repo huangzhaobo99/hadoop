@@ -2300,7 +2300,6 @@ public class DatanodeManager {
     this.slowPeerCollectionInterval = interval;
   }
 
-
   @VisibleForTesting
   public long getSlowPeerCollectionInterval() {
     return slowPeerCollectionInterval;
