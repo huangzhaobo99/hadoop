@@ -424,17 +424,6 @@ public class DatanodeManager {
     }
   }
 
-  public void restartSlowPeerCollector(long interval) {
-    Preconditions.checkNotNull(slowPeerCollectorDaemon,
-        "slowPeerCollectorDaemon thread is null, not support restart");
-    stopSlowPeerCollector();
-    Preconditions.checkNotNull(slowPeerTracker, "slowPeerTracker should not be un-assigned");
-    this.slowPeerCollectionInterval = interval;
-    if (slowPeerTracker.isSlowPeerTrackerEnabled()) {
-      startSlowPeerCollector();
-    }
-  }
-
   private static long getStaleIntervalFromConf(Configuration conf,
       long heartbeatExpireInterval) {
     long staleInterval = conf.getLong(
@@ -543,6 +532,9 @@ public class DatanodeManager {
   }
 
   public void setMaxSlowpeerCollectNodes(int maxNodes) {
+    Preconditions.checkNotNull(slowPeerCollectorDaemon,
+        "slowPeerCollectorDaemon thread is null, not support restart");
+    Preconditions.checkNotNull(slowPeerTracker, "slowPeerTracker should not be un-assigned");
     this.maxSlowPeerReportNodes = maxNodes;
   }
 
@@ -2300,6 +2292,14 @@ public class DatanodeManager {
   public boolean isSlowPeerCollectorInitialized() {
     return slowPeerCollectorDaemon == null;
   }
+
+  public void setSlowPeerCollectionInterval(long interval) {
+    Preconditions.checkNotNull(slowPeerCollectorDaemon,
+        "slowPeerCollectorDaemon thread is null, not support restart");
+    Preconditions.checkNotNull(slowPeerTracker, "slowPeerTracker should not be un-assigned");
+    this.slowPeerCollectionInterval = interval;
+  }
+
 
   @VisibleForTesting
   public long getSlowPeerCollectionInterval() {

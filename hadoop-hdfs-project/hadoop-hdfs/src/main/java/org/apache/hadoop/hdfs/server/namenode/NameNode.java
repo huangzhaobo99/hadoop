@@ -2683,14 +2683,14 @@ public class NameNode extends ReconfigurableBase implements
           long defaultInterval =
               getConf().getTimeDuration(DFS_NAMENODE_SLOWPEER_COLLECT_INTERVAL_KEY,
                   DFS_NAMENODE_SLOWPEER_COLLECT_INTERVAL_DEFAULT, TimeUnit.MILLISECONDS);
-          datanodeManager.restartSlowPeerCollector(defaultInterval);
+          datanodeManager.setSlowPeerCollectionInterval(defaultInterval);
           result = Long.toString(defaultInterval);
         } else {
           // set to other value
           long newInterval =
               getConf().getTimeDurationHelper(DFS_NAMENODE_SLOWPEER_COLLECT_INTERVAL_DEFAULT,
                   newVal, TimeUnit.MILLISECONDS);
-          datanodeManager.restartSlowPeerCollector(newInterval);
+          datanodeManager.setSlowPeerCollectionInterval(newInterval);
           result = newVal;
         }
         break;

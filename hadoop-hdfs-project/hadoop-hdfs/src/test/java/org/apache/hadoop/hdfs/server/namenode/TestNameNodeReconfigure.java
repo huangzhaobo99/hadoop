@@ -33,6 +33,7 @@ import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.IPC_SERVER_LOG_
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.IPC_SERVER_LOG_SLOW_RPC_THRESHOLD_MS_DEFAULT;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.IPC_SERVER_LOG_SLOW_RPC_THRESHOLD_MS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_DATANODE_MAX_NODES_TO_REPORT_KEY;
+import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_DATANODE_SLOW_IO_WARNING_THRESHOLD_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_IMAGE_PARALLEL_LOAD_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_LOCK_DETAILED_METRICS_KEY;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_NAMENODE_READ_LOCK_REPORTING_THRESHOLD_MS_KEY;
@@ -462,6 +463,24 @@ public class TestNameNodeReconfigure {
 
     // By default, DFS_NAMENODE_MAX_SLOWPEER_COLLECT_NODES_KEY is 5.
     assertEquals(5, datanodeManager.getMaxSlowpeerCollectNodes());
+
+    assertFalse(datanodeManager.getSlowPeerTracker().isSlowPeerTrackerEnabled());
+
+    assertFalse("SlowNode tracker is already enabled. It should be disabled by default",
+        datanodeManager.getSlowPeerTracker().isSlowPeerTrackerEnabled());
+    assertTrue(datanodeManager.isSlowPeerCollectorInitialized());
+
+    try {
+      nameNode.reconfigureProperty(DFS_NAMENODE_MAX_SLOWPEER_COLLECT_NODES_KEY,
+          Integer.toString(10));
+    } catch (NullPointerException e) {
+      assertEquals("slowPeerCollectorDaemon thread is null, not support restart", e.getMessage());
+    }
+
+    nameNode.reconfigureProperty(DFS_DATANODE_PEER_STATS_ENABLED_KEY, "True");
+    assertTrue("SlowNode tracker is still disabled. Reconfiguration could not be successful",
+        datanodeManager.getSlowPeerTracker().isSlowPeerTrackerEnabled());
+    assertFalse(datanodeManager.isSlowPeerCollectorInitialized());
 
     // Reconfigure.
     nameNode.reconfigureProperty(
