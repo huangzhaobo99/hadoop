@@ -1378,11 +1378,9 @@ public class NameNode extends ReconfigurableBase implements
       SecurityUtil.login(conf, DFS_NAMENODE_KEYTAB_FILE_KEY,
           DFS_NAMENODE_KERBEROS_PRINCIPAL_KEY, socAddr.getHostName());
     }
-    
+
     Collection<URI> nameDirsToFormat = FSNamesystem.getNamespaceDirs(conf);
-    List<URI> sharedDirs = FSNamesystem.getSharedEditsDirs(conf);
-    List<URI> editDirsToFormat = 
-                 FSNamesystem.getNamespaceEditsDirs(conf);
+    List<URI> editDirsToFormat = FSNamesystem.getNamespaceEditsDirs(conf);
 
     // if clusterID is not provided - see if you can find the current one
     String clusterId = StartupOption.FORMAT.getClusterId();
@@ -1392,10 +1390,9 @@ public class NameNode extends ReconfigurableBase implements
     }
 
     LOG.info("Formatting using clusterid: {}", clusterId);
-    
-    FSImage fsImage = new FSImage(conf, nameDirsToFormat, editDirsToFormat);
+
     FSNamesystem fsn = null;
-    try {
+    try (FSImage fsImage = new FSImage(conf, nameDirsToFormat, editDirsToFormat)) {
       fsn = new FSNamesystem(conf, fsImage);
       fsImage.getEditLog().initJournalsForWrite();
 
@@ -1423,7 +1420,6 @@ public class NameNode extends ReconfigurableBase implements
       LOG.warn("Encountered exception during format", ioe);
       throw ioe;
     } finally {
-      fsImage.close();
       if (fsn != null) {
         fsn.close();
       }
