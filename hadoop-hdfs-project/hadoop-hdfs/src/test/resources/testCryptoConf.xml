@@ -624,6 +624,26 @@
       </comparators>
     </test>
 
+    <test>
+      <description>Test failure of creating EZ on an existing EZ</description>
+      <test-commands>
+        <command>-fs NAMENODE -rm -r .Trash/Current/*</command>
+        <command>-fs NAMENODE -mkdir /test1</command>
+        <crypto-admin-command>-createZone -path /test1 -keyName myKey</crypto-admin-command>
+        <crypto-admin-command>-getZone -path /test1</crypto-admin-command>
+      </test-commands>
+      <cleanup-commands>
+        <command>-fs NAMENODE -rm -r .Trash/Current/*</command>
+      </cleanup-commands>
+      <comparators>
+        <comparator>
+          <type>RegexpAcrossOutputComparator</type>
+          <expected-output>(/test1)\s*(myKey)\s*</expected-output>
+        </comparator>
+      </comparators>
+    </test>
+
+
     <!--More thorough test cases for re-encryption are in TestEncryptionZones-->
     <test>
       <description>Test success of reencrypt submission on a EZ</description>

@@ -416,8 +416,54 @@ public class CryptoAdmin extends Configured implements Tool {
     }
   }
 
+  private static class GetZoneCommand implements AdminHelper.Command {
+
+    @Override
+    public String getName() {
+      return "-getZone";
+    }
+
+    @Override
+    public String getShortUsage() {
+      return "[" + getName() + " -path <path>]\n";
+    }
+
+    @Override
+    public String getLongUsage() {
+      // Get the encryption zone for a path.
+      final TableListing listing = AdminHelper.getOptionDescriptionListing();
+      listing.addRow("<path>", "Get the encryption zone for the specified path. ");
+      return getShortUsage() + "\n" + "Get a encryption zone.\n\n" + listing;
+    }
+
+    @Override
+    public int run(Configuration conf, List<String> args) throws IOException {
+      final String path = StringUtils.popOptionWithArgument("-path", args);
+
+      if (!args.isEmpty()) {
+        System.err.println("Can't understand argument: " + args.get(0));
+        return 1;
+      }
+
+      Path p = new Path(path);
+      HdfsAdmin admin = new HdfsAdmin(p.toUri(), conf);
+      try {
+        final TableListing listing =
+            new TableListing.Builder().addField("").addField("", true).hideHeaders().build();
+        EncryptionZone ez = admin.getEncryptionZoneForPath(p);
+        listing.addRow(ez.getPath(), ez.getKeyName());
+        System.out.println(listing);
+      } catch (IOException e) {
+        System.err.println(prettifyException(e));
+        return 2;
+      }
+      return 0;
+    }
+  }
+
   private static final AdminHelper.Command[] COMMANDS = {
       new CreateZoneCommand(),
+      new GetZoneCommand(),
       new ListZonesCommand(),
       new ProvisionTrashCommand(),
       new GetFileEncryptionInfoCommand(),
