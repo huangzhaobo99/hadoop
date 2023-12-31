@@ -439,6 +439,10 @@ public class CryptoAdmin extends Configured implements Tool {
     @Override
     public int run(Configuration conf, List<String> args) throws IOException {
       final String path = StringUtils.popOptionWithArgument("-path", args);
+      if (path == null) {
+        System.err.println("You must specify a path with -path.");
+        return 1;
+      }
 
       if (!args.isEmpty()) {
         System.err.println("Can't understand argument: " + args.get(0));

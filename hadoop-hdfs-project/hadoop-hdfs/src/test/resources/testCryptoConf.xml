@@ -625,15 +625,14 @@
     </test>
 
     <test>
-      <description>Test failure of creating EZ on an existing EZ</description>
+      <description>Test get encryption zones when no zone has been deleted.</description>
       <test-commands>
-        <command>-fs NAMENODE -rm -r .Trash/Current/*</command>
         <command>-fs NAMENODE -mkdir /test1</command>
         <crypto-admin-command>-createZone -path /test1 -keyName myKey</crypto-admin-command>
         <crypto-admin-command>-getZone -path /test1</crypto-admin-command>
       </test-commands>
       <cleanup-commands>
-        <command>-fs NAMENODE -rm -r .Trash/Current/*</command>
+        <command>-fs NAMENODE -rm -r /test1</command>
       </cleanup-commands>
       <comparators>
         <comparator>
@@ -643,6 +642,37 @@
       </comparators>
     </test>
 
+    <test>
+      <description>Test failure of get an EZ no path is specified.</description>
+      <test-commands>
+        <crypto-admin-command>-getZone</crypto-admin-command>
+      </test-commands>
+      <cleanup-commands>
+      </cleanup-commands>
+      <comparators>
+        <comparator>
+          <type>SubstringComparator</type>
+          <expected-output>You must specify a path</expected-output>
+        </comparator>
+      </comparators>
+    </test>
+
+<!--    <test>-->
+<!--      <description>Test failure of getZone on a EZ dir</description>-->
+<!--      <test-commands>-->
+<!--        <command>-fs NAMENODE -mkdir /test1</command>-->
+<!--        <crypto-admin-command>-getZone -path /test1</crypto-admin-command>-->
+<!--      </test-commands>-->
+<!--      <cleanup-commands>-->
+<!--        <command>-fs NAMENODE -rm -r /src</command>-->
+<!--      </cleanup-commands>-->
+<!--      <comparators>-->
+<!--        <comparator>-->
+<!--          <type>SubstringComparator</type>-->
+<!--          <expected-output>No FileEncryptionInfo found for path</expected-output>-->
+<!--        </comparator>-->
+<!--      </comparators>-->
+<!--    </test>-->
 
     <!--More thorough test cases for re-encryption are in TestEncryptionZones-->
     <test>
