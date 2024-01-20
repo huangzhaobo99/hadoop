@@ -18,6 +18,8 @@
 package org.apache.hadoop.security;
 
 import static org.apache.hadoop.fs.CommonConfigurationKeys.HADOOP_USER_GROUP_METRICS_PERCENTILES_INTERVALS;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_KERBEROS_KEYTAB_PASSWORD_LOGIN_AUTORENEWAL_ENABLED;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_KERBEROS_KEYTAB_PASSWORD_LOGIN_AUTORENEWAL_ENABLED_DEFAULT;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_KERBEROS_MIN_SECONDS_BEFORE_RELOGIN;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_KERBEROS_MIN_SECONDS_BEFORE_RELOGIN_DEFAULT;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_KERBEROS_KEYTAB_LOGIN_AUTORENEWAL_ENABLED;
@@ -69,6 +71,7 @@ import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 import javax.security.auth.spi.LoginModule;
 
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.io.retry.RetryPolicies;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -270,6 +273,8 @@ public class UserGroupInformation {
   private static long kerberosMinSecondsBeforeRelogin;
   /** Boolean flag to enable auto-renewal for keytab based loging. */
   private static boolean kerberosKeyTabLoginRenewalEnabled;
+  /** Boolean flag to enable auto-renewal for keytabPassword based loging. */
+  private static boolean kerberosKeyTabPasswordLoginRenewalEnabled;
   /** A reference to Kerberos login auto renewal thread. */
   private static Optional<ExecutorService> kerberosLoginRenewalExecutor =
           Optional.empty();
@@ -332,6 +337,10 @@ public class UserGroupInformation {
             HADOOP_KERBEROS_KEYTAB_LOGIN_AUTORENEWAL_ENABLED,
             HADOOP_KERBEROS_KEYTAB_LOGIN_AUTORENEWAL_ENABLED_DEFAULT);
 
+    kerberosKeyTabPasswordLoginRenewalEnabled = conf.getBoolean(
+        HADOOP_KERBEROS_KEYTAB_PASSWORD_LOGIN_AUTORENEWAL_ENABLED,
+        HADOOP_KERBEROS_KEYTAB_PASSWORD_LOGIN_AUTORENEWAL_ENABLED_DEFAULT);
+
     // If we haven't set up testing groups, use the configuration to find it
     if (!(groups instanceof TestingGroups)) {
       groups = Groups.getUserToGroupsMappingService(conf);
@@ -373,6 +382,7 @@ public class UserGroupInformation {
     groups = null;
     kerberosMinSecondsBeforeRelogin = 0;
     kerberosKeyTabLoginRenewalEnabled = false;
+    kerberosKeyTabPasswordLoginRenewalEnabled = false;
     kerberosLoginRenewalExecutor = Optional.empty();
     setLoginUser(null);
     HadoopKerberosName.setRules(null);
@@ -401,6 +411,14 @@ public class UserGroupInformation {
   static boolean isKerberosKeyTabLoginRenewalEnabled() {
     ensureInitialized();
     return kerberosKeyTabLoginRenewalEnabled;
+  }
+
+  @InterfaceAudience.Private
+  @InterfaceStability.Evolving
+  @VisibleForTesting
+  static boolean isKerberosKeyTabPasswordLoginRenewalEnabled() {
+    ensureInitialized();
+    return kerberosKeyTabPasswordLoginRenewalEnabled;
   }
 
   @InterfaceAudience.Private
@@ -500,9 +518,8 @@ public class UserGroupInformation {
     }
   }
 
-  private static HadoopLoginContext
-  newLoginContext(String appName, Subject subject,
-                  HadoopConfiguration loginConf)
+  private static HadoopLoginContext newLoginContext(String appName, Subject subject,
+      CallbackHandler callbackHandler, HadoopConfiguration loginConf)
       throws LoginException {
     // Temporarily switch the thread's ContextClassLoader to match this
     // class's classloader, so that we can properly load HadoopLoginModule
@@ -511,7 +528,7 @@ public class UserGroupInformation {
     ClassLoader oldCCL = t.getContextClassLoader();
     t.setContextClassLoader(HadoopLoginModule.class.getClassLoader());
     try {
-      return new HadoopLoginContext(appName, subject, loginConf);
+      return new HadoopLoginContext(appName, subject, callbackHandler, loginConf);
     } finally {
       t.setContextClassLoader(oldCCL);
     }
@@ -634,7 +651,7 @@ public class UserGroupInformation {
     LoginParams params = new LoginParams();
     params.put(LoginParam.PRINCIPAL, user);
     params.put(LoginParam.CCACHE, ticketCache);
-    return doSubjectLogin(null, params);
+    return doSubjectLogin(null, params, null);
   }
 
   /**
@@ -660,7 +677,7 @@ public class UserGroupInformation {
 
     // null params indicate external subject login.  no login context will
     // be attached.
-    return doSubjectLogin(subject, null);
+    return doSubjectLogin(subject, null, null);
   }
 
   /**
@@ -730,7 +747,7 @@ public class UserGroupInformation {
 
   private static
   UserGroupInformation createLoginUser(Subject subject) throws IOException {
-    UserGroupInformation realUser = doSubjectLogin(subject, null);
+    UserGroupInformation realUser = doSubjectLogin(subject, null, null);
     UserGroupInformation loginUser = null;
     try {
       // If the HADOOP_PROXY_USER environment variable or property
@@ -812,10 +829,18 @@ public class UserGroupInformation {
   }
   
   private String getKeytab() {
+    return getKeytabByLoginParam(LoginParam.KEYTAB);
+  }
+
+  private String getKeytabPassword() {
+    return getKeytabByLoginParam(LoginParam.KEYTABPASSWORD);
+  }
+
+  private String getKeytabByLoginParam(LoginParam loginParam) {
     HadoopLoginContext login = getLogin();
     return (login != null)
-      ? login.getConfiguration().getParameters().get(LoginParam.KEYTAB)
-      : null;
+        ? login.getConfiguration().getParameters().get(loginParam)
+        : null;
   }
 
   /**
@@ -834,7 +859,8 @@ public class UserGroupInformation {
   public boolean isFromKeytab() {
     // can't simply check if keytab is present since a relogin failure will
     // have removed the keytab from priv creds.  instead, check login params.
-    return hasKerberosCredentials() && isHadoopLogin() && getKeytab() != null;
+    return hasKerberosCredentials() && isHadoopLogin() && (getKeytab() != null
+        || getKeytabPassword() != null);
   }
   
   /**
@@ -842,7 +868,8 @@ public class UserGroupInformation {
    * @return true if the credentials are from a ticket cache.
    */
   private boolean isFromTicket() {
-    return hasKerberosCredentials() && isHadoopLogin() && getKeytab() == null;
+    return hasKerberosCredentials() && isHadoopLogin() && (getKeytab() == null
+        && getKeytabPassword() == null);
   }
 
   /**
@@ -1146,6 +1173,24 @@ public class UserGroupInformation {
         user, new File(path).getName(), isKerberosKeyTabLoginRenewalEnabled());
   }
 
+  @InterfaceAudience.Public
+  @InterfaceStability.Evolving
+  public static void loginUserFromKeytabPassword(String user, String password) throws IOException {
+    if (!isSecurityEnabled()) {
+      return;
+    }
+
+    UserGroupInformation u = loginUserFromKeytabPasswordAndReturnUGI(user, password);
+    if (isKerberosKeyTabPasswordLoginRenewalEnabled()) {
+      u.spawnAutoRenewalThreadForKeytab();
+    }
+
+    setLoginUser(u);
+
+    LOG.info("Login successful for user {} using keytab password. Keytab auto renewal enabled : {}",
+        user, isKerberosKeyTabPasswordLoginRenewalEnabled());
+  }
+
   /**
    * Log the current user out who previously logged in using keytab.
    * This method assumes that the user logged in by calling
@@ -1285,7 +1330,14 @@ public class UserGroupInformation {
         return;
       }
     }
-    relogin(login, ignoreLastLoginTime);
+    if (getKeytab() != null) {
+      relogin(login, null, ignoreLastLoginTime);
+    } else if (getKeytabPassword() != null) {
+      LoginParams params = getLogin().getConfiguration().getParameters();
+      String principal = params.get(LoginParam.PRINCIPAL);
+      String password = params.get(LoginParam.KEYTABPASSWORD);
+      relogin(login, new PasswordCallbackHandler(principal, password), ignoreLastLoginTime);
+    }
   }
 
   /**
@@ -1328,23 +1380,23 @@ public class UserGroupInformation {
     if (login == null) {
       throw new KerberosAuthException(MUST_FIRST_LOGIN);
     }
-    relogin(login, ignoreLastLoginTime);
+    relogin(login, null, ignoreLastLoginTime);
   }
 
-  private void relogin(HadoopLoginContext login, boolean ignoreLastLoginTime)
-      throws IOException {
+  private void relogin(HadoopLoginContext login, CallbackHandler callbackHandler,
+      boolean ignoreLastLoginTime) throws IOException {
     // ensure the relogin is atomic to avoid leaving credentials in an
     // inconsistent state.  prevents other ugi instances, SASL, and SPNEGO
     // from accessing or altering credentials during the relogin.
     synchronized(login.getSubjectLock()) {
       // another racing thread may have beat us to the relogin.
       if (login == getLogin()) {
-        unprotectedRelogin(login, ignoreLastLoginTime);
+        unprotectedRelogin(login, callbackHandler, ignoreLastLoginTime);
       }
     }
   }
 
-  private void unprotectedRelogin(HadoopLoginContext login,
+  private void unprotectedRelogin(HadoopLoginContext login, CallbackHandler callbackHandler,
       boolean ignoreLastLoginTime) throws IOException {
     assert Thread.holdsLock(login.getSubjectLock());
     long now = Time.now();
@@ -1362,7 +1414,7 @@ public class UserGroupInformation {
       //login and also update the subject field of this instance to 
       //have the new credentials (pass it to the LoginContext constructor)
       login = newLoginContext(
-        login.getAppName(), login.getSubject(), login.getConfiguration());
+        login.getAppName(), login.getSubject(), callbackHandler, login.getConfiguration());
       LOG.debug("Initiating re-login for {}", getUserName());
       login.login();
       // this should be unnecessary.  originally added due to improper locking
@@ -1395,8 +1447,30 @@ public class UserGroupInformation {
     LoginParams params = new LoginParams();
     params.put(LoginParam.PRINCIPAL, user);
     params.put(LoginParam.KEYTAB, path);
-    return doSubjectLogin(null, params);
+    return doSubjectLogin(null, params, null);
   }
+
+  /**
+   * Log a user in from a keytab password. Loads a user identity from a keytab
+   * password and login them in. This new user does not affect the currently
+   * logged-in user.
+   * @param user the principal name to load from the keytab
+   * @param password the keytab password
+   * @throws IOException if the keytab password can't be read
+   * @return UserGroupInformation.
+   */
+  public static UserGroupInformation loginUserFromKeytabPasswordAndReturnUGI(String user,
+      String password) throws IOException {
+    if (!isSecurityEnabled()) {
+      return UserGroupInformation.getCurrentUser();
+    }
+
+    LoginParams params = new LoginParams();
+    params.put(LoginParam.PRINCIPAL, user);
+    params.put(LoginParam.KEYTABPASSWORD, password);
+    return doSubjectLogin(null, params, new PasswordCallbackHandler(user, password));
+  }
+
 
   private boolean hasSufficientTimeElapsed(long now) {
     if (!shouldRenewImmediatelyForTests &&
@@ -2040,7 +2114,7 @@ public class UserGroupInformation {
    * @throws IOException
    */
   private static UserGroupInformation doSubjectLogin(
-      Subject subject, LoginParams params) throws IOException {
+      Subject subject, LoginParams params, CallbackHandler callbackHandler) throws IOException {
     ensureInitialized();
     // initial default login.
     if (subject == null && params == null) {
@@ -2049,7 +2123,7 @@ public class UserGroupInformation {
     HadoopConfiguration loginConf = new HadoopConfiguration(params);
     try {
       HadoopLoginContext login = newLoginContext(
-        authenticationMethod.getLoginAppName(), subject, loginConf);
+        authenticationMethod.getLoginAppName(), subject, callbackHandler, loginConf);
       login.login();
       UserGroupInformation ugi = new UserGroupInformation(login.getSubject());
       // attach login context for relogin unless this was a pre-existing
@@ -2077,6 +2151,7 @@ public class UserGroupInformation {
   enum LoginParam {
     PRINCIPAL,
     KEYTAB,
+    KEYTABPASSWORD,
     CCACHE,
   }
 
@@ -2110,9 +2185,9 @@ public class UserGroupInformation {
     private final HadoopConfiguration conf;
     private AtomicBoolean isLoggedIn = new AtomicBoolean();
 
-    HadoopLoginContext(String appName, Subject subject,
-                       HadoopConfiguration conf) throws LoginException {
-      super(appName, subject, null, conf);
+    HadoopLoginContext(String appName, Subject subject, CallbackHandler callbackHandler,
+        HadoopConfiguration conf) throws LoginException {
+      super(appName, subject, callbackHandler, conf);
       this.appName = appName;
       this.conf = conf;
     }
@@ -2251,6 +2326,8 @@ public class UserGroupInformation {
             options.put("useDefaultKeytab", "true");
           }
           options.put("credsType", "both");
+        } else if (params.containsKey(LoginParam.KEYTABPASSWORD)) {
+          options.put("credsType", "both");
         } else {
           String ticketCache = params.get(LoginParam.CCACHE);
           if (ticketCache != null) {
@@ -2268,6 +2345,12 @@ public class UserGroupInformation {
             options.put("keyTab", keytab);
           }
           options.put("storeKey", "true");
+          options.put("doNotPrompt", "true");
+        } else if (params.containsKey(LoginParam.KEYTABPASSWORD)) {
+          options.put("tryFirstPass", "true");
+          options.put("useKeyTab", "false");
+          options.put("storeKey", "true");
+          options.put("doNotPrompt", "false");
         } else {
           options.put("useTicketCache", "true");
           String ticketCache = params.get(LoginParam.CCACHE);
@@ -2275,8 +2358,8 @@ public class UserGroupInformation {
             options.put("ticketCache", ticketCache);
           }
           options.put("renewTGT", "true");
+          options.put("doNotPrompt", "true");
         }
-        options.put("doNotPrompt", "true");
       }
       options.put("refreshKrb5Config", "true");
 

@@ -734,6 +734,17 @@ public class CommonConfigurationKeysPublic {
    * <a href="{@docRoot}/../hadoop-project-dist/hadoop-common/core-default.xml">
    * core-default.xml</a>
    */
+  public static final String HADOOP_KERBEROS_KEYTAB_PASSWORD_LOGIN_AUTORENEWAL_ENABLED =
+      "hadoop.kerberos.keytab.password.login.autorenewal.enabled";
+  /** Default value for HADOOP_KERBEROS_KEYTAB_PASSWORD_LOGIN_AUTORENEWAL_ENABLED. */
+  public static final boolean
+      HADOOP_KERBEROS_KEYTAB_PASSWORD_LOGIN_AUTORENEWAL_ENABLED_DEFAULT = false;
+
+  /**
+   * @see
+   * <a href="{@docRoot}/../hadoop-project-dist/hadoop-common/core-default.xml">
+   * core-default.xml</a>
+   */
   public static final String  HADOOP_RPC_PROTECTION =
     "hadoop.rpc.protection";
   /** Class to override Sasl Properties for a connection */
