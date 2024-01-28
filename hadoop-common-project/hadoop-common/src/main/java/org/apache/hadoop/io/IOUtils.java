@@ -54,7 +54,7 @@ public class IOUtils {
   /**
    * Copies from one stream to another.
    *
-   * @param in InputStrem to read from
+   * @param in InputStream to read from
    * @param out OutputStream to write to
    * @param buffSize the size of the buffer 
    * @param close whether or not close the InputStream and 
@@ -83,7 +83,7 @@ public class IOUtils {
   /**
    * Copies from one stream to another.
    * 
-   * @param in InputStrem to read from
+   * @param in InputStream to read from
    * @param out OutputStream to write to
    * @param buffSize the size of the buffer.
    * @throws IOException raised on errors performing I/O.
@@ -106,7 +106,7 @@ public class IOUtils {
    * Copies from one stream to another. <strong>closes the input and output streams 
    * at the end</strong>.
    *
-   * @param in InputStrem to read from
+   * @param in InputStream to read from
    * @param out OutputStream to write to
    * @param conf the Configuration object.
    * @throws IOException raised on errors performing I/O.

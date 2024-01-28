@@ -73,12 +73,12 @@ public class TestIOUtils {
     OutputStream outputStream = Mockito.mock(OutputStream.class);
     Mockito.doReturn(-1).when(inputStream).read(new byte[1]);
     Mockito.doThrow(new IOException()).when(outputStream).close();
-    try{
+    try {
       IOUtils.copyBytes(inputStream, outputStream, 1, true);
     } catch (IOException e) {
     }
     Mockito.verify(inputStream, Mockito.atLeastOnce()).close();
-    Mockito.verify(outputStream, Mockito.atLeastOnce()).close();
+    Mockito.verify(outputStream, Mockito.atLeast(2)).close();
   }
 
   @Test
@@ -93,7 +93,8 @@ public class TestIOUtils {
       fail("Didn't throw exception");
     } catch (RuntimeException e) {
     }
-    Mockito.verify(outputStream, Mockito.atLeastOnce()).close();
+    Mockito.verify(inputStream, Mockito.atLeastOnce()).close();
+    Mockito.verify(outputStream, Mockito.atLeast(2)).close();
   }
 
   @Test
@@ -108,7 +109,8 @@ public class TestIOUtils {
       fail("Didn't throw exception");
     } catch (RuntimeException e) {
     }
-    Mockito.verify(inputStream, Mockito.atLeastOnce()).close();
+    Mockito.verify(inputStream, Mockito.atLeast(2)).close();
+    Mockito.verify(outputStream, Mockito.atLeastOnce()).close();
   }
 
   @Test
