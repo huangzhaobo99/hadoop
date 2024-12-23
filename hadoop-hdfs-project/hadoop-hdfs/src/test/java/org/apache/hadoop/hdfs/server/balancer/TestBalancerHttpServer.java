@@ -67,22 +67,20 @@ public class TestBalancerHttpServer {
 
   @Test
   public void testHttpServer() throws Exception {
-    BalancerHttpServer server = null;
+    BalancerHttpServer server = new BalancerHttpServer(conf);
     try {
-      server = new BalancerHttpServer(conf);
       server.start();
       Assertions.assertTrue(checkConnection("http", server.getHttpAddress()));
       Assertions.assertTrue(checkConnection("https", server.getHttpsAddress()));
     } finally {
-      if (server != null) {
-        server.stop();
-      }
+      server.stop();
     }
   }
 
   private boolean checkConnection(String scheme, InetSocketAddress address) {
-    if (address == null)
+    if (address == null) {
       return false;
+    }
     try {
       URL url = new URL(scheme + "://" + NetUtils.getHostPortString(address));
       URLConnection conn = connectionFactory.openConnection(url);
