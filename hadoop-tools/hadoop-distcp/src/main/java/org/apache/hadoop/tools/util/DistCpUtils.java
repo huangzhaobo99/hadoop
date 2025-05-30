@@ -125,6 +125,7 @@ public class DistCpUtils {
     String confLabel = "distcp."
         + StringUtils.toLowerCase(context.getCopyStrategy())
         + ".strategy" + ".impl";
+    LOG.debug("DistCp input format strategy class: {}", conf.get(confLabel));
     return conf.getClass(confLabel, UniformSizeInputFormat.class, InputFormat.class);
   }
 

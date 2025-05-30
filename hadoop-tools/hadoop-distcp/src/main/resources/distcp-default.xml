@@ -26,9 +26,15 @@
     </property>
 
     <property>
-        <name>distcp.static.strategy.impl</name>
+        <name>distcp.uniformsize.strategy.impl</name>
         <value>org.apache.hadoop.tools.mapred.UniformSizeInputFormat</value>
-        <description>Implementation of static input format</description>
+        <description>Implementation of uniform size (total bytes) input format</description>
+    </property>
+
+    <property>
+        <name>distcp.uniformpaths.strategy.impl</name>
+        <value>org.apache.hadoop.tools.mapred.UniformSizeInputFormat</value>
+        <description>Implementation of uniform paths (total paths) input format</description>
     </property>
 
     <property>

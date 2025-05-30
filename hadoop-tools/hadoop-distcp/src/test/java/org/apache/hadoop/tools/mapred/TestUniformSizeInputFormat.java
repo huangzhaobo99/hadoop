@@ -35,6 +35,8 @@ import org.apache.hadoop.tools.DistCpContext;
 import org.apache.hadoop.tools.DistCpOptions;
 import org.apache.hadoop.tools.StubContext;
 import org.apache.hadoop.security.Credentials;
+import org.apache.hadoop.tools.util.InputFormatUtils;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -119,7 +121,7 @@ public class TestUniformSizeInputFormat {
 
     int sizePerMap = totalFileSize/nMaps;
 
-    checkSplits(listFile, splits);
+    InputFormatUtils.checkSplits(cluster.getFileSystem().getConf(), listFile, splits);
 
     int doubleCheckedTotalSize = 0;
     int previousSplitSize = -1;
@@ -151,33 +153,6 @@ public class TestUniformSizeInputFormat {
     }
 
     assertEquals(totalFileSize, doubleCheckedTotalSize);
-  }
-
-  private void checkSplits(Path listFile, List<InputSplit> splits) throws IOException {
-    long lastEnd = 0;
-
-    //Verify if each split's start is matching with the previous end and
-    //we are not missing anything
-    for (InputSplit split : splits) {
-      FileSplit fileSplit = (FileSplit) split;
-      long start = fileSplit.getStart();
-      assertEquals(lastEnd, start);
-      lastEnd = start + fileSplit.getLength();
-    }
-
-    //Verify there is nothing more to read from the input file
-    SequenceFile.Reader reader
-            = new SequenceFile.Reader(cluster.getFileSystem().getConf(),
-                    SequenceFile.Reader.file(listFile));
-
-    try {
-      reader.seek(lastEnd);
-      CopyListingFileStatus srcFileStatus = new CopyListingFileStatus();
-      Text srcRelPath = new Text();
-      assertFalse(reader.next(srcRelPath, srcFileStatus));
-    } finally {
-      IOUtils.closeStream(reader);
-    }
   }
 
   @Test
