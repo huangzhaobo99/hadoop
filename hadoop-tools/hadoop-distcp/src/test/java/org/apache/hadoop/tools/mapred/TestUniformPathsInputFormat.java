@@ -44,7 +44,7 @@ import org.apache.hadoop.tools.CopyListingFileStatus;
 import org.apache.hadoop.tools.DistCpContext;
 import org.apache.hadoop.tools.DistCpOptions;
 import org.apache.hadoop.tools.StubContext;
-import org.apache.hadoop.tools.util.InputFormatUtils;
+import org.apache.hadoop.tools.util.InputFormatTestUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -100,7 +100,7 @@ public class TestUniformPathsInputFormat {
     UniformPathsInputFormat uniformPathsInputFormat = new UniformPathsInputFormat();
     List<InputSplit> splits = uniformPathsInputFormat.getSplits(jobContext);
 
-    InputFormatUtils.checkSplits(fileSystem.getConf(), listFile, splits);
+    InputFormatTestUtils.checkSplits(fileSystem.getConf(), listFile, splits);
 
     int totalPaths = 0;
     for (InputSplit split : splits) {
