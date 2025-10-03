@@ -41,6 +41,10 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
       - name: Build Hadoop maven plugins
         run: cd hadoop-maven-plugins && mvn --batch-mode install
       - name: Build Hadoop
