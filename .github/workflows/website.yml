@@ -19,7 +19,7 @@ name: website
 # Controls when the action will run.
 on:
   push:
-    branches: [ trunk ]
+    branches: [ fix-node-version ]
 
 jobs:
   build:
