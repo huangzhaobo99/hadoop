@@ -274,7 +274,7 @@
                         </goals>
                         <phase>generate-resources</phase>
                         <configuration>
-                            <nodeVersion>v20.12.2</nodeVersion>
+                            <nodeVersion>${nodejs.version}</nodeVersion>
                             <yarnVersion>${yarnpkg.version}</yarnVersion>
                         </configuration>
                     </execution>
